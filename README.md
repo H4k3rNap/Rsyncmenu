@@ -58,7 +58,7 @@ chmod +x sync_directories.sh
 
 Run the script:
 ```bash
-./sync_directories.sh
+./rsyncmenu.sh
 ```
 
 The script will guide you through the following steps:
