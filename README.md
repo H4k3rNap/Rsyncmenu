@@ -25,22 +25,6 @@ The script requires the following tools to be installed on your system:
 ```bash
 sudo apt install rsync coreutils
 ```
-
-### Installation on CentOS/RHEL/Fedora:
-```bash
-# For CentOS/RHEL
-sudo yum install rsync coreutils
-
-# For Fedora
-sudo dnf install rsync coreutils
-```
-
-### Installation on macOS:
-```bash
-# Using Homebrew
-brew install rsync coreutils
-```
-
 ## * Installation
 
 1. Clone this repository or download the script:
