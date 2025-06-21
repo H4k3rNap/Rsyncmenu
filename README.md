@@ -176,24 +176,6 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 - Test thoroughly before submitting
 - Update documentation as needed
 
-## * License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## * Acknowledgments
-
-- Built using [rsync](https://rsync.samba.org/) - the fast, versatile file copying tool
-- Inspired by the need for simple, safe directory synchronization
-- Thanks to the open-source community for continuous improvements
-
-## * Support
-
-If you encounter any issues or have questions:
-
-1. Check the troubleshooting section above
-2. Search existing [issues](https://github.com/yourusername/directory-sync-script/issues)
-3. Create a new issue with detailed information about your problem
-
 ---
 
 *** If this script helped you, please consider giving it a star!**
