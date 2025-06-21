@@ -45,8 +45,8 @@ brew install rsync coreutils
 
 1. Clone this repository or download the script:
 ```bash
-git clone https://github.com/yourusername/directory-sync-script.git
-cd directory-sync-script
+git clone https://github.com/H4k3rNap/Rsyncmenu.git
+cd Rsyncmenu
 ```
 
 2. Make the script executable:
