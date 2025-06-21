@@ -51,7 +51,7 @@ cd directory-sync-script
 
 2. Make the script executable:
 ```bash
-chmod +x sync_directories.sh
+chmod +x rsyncmenu.sh
 ```
 
 ## * Usage
