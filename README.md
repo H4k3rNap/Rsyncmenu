@@ -180,7 +180,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## * Acknowledgments
 
 - Built using [rsync](https://rsync.samba.org/) - the fast, versatile file copying tool
 - Inspired by the need for simple, safe directory synchronization
