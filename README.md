@@ -4,7 +4,7 @@
 
 A simple and interactive bash script for synchronizing directories using rsync with a user-friendly interface and real-time feedback.
 
-## 🚀 Features
+## * Features
 
 - **Interactive Mode**: Prompts user for source and destination paths
 - **Real-time Analysis**: Analyzes differences before synchronization
@@ -14,7 +14,7 @@ A simple and interactive bash script for synchronizing directories using rsync w
 - **Safe Operations**: Prevents accidental synchronization of identical directories
 - **Trash Exclusion**: Automatically excludes `.Trash-1000` directories
 
-## 📋 Prerequisites
+## * Prerequisites
 
 The script requires the following tools to be installed on your system:
 
@@ -41,7 +41,7 @@ sudo dnf install rsync coreutils
 brew install rsync coreutils
 ```
 
-## 🛠️ Installation
+## * Installation
 
 1. Clone this repository or download the script:
 ```bash
@@ -54,7 +54,7 @@ cd directory-sync-script
 chmod +x sync_directories.sh
 ```
 
-## 📖 Usage
+## * Usage
 
 Run the script:
 ```bash
@@ -120,7 +120,7 @@ Press [ENTER] to quit ...
 - **Delete (`--delete`)**: Ensures destination is an exact mirror of source by removing extra files
 - **Exclude (`--exclude`)**: Skips specified patterns (trash directories in this case)
 
-## 🔒 Safety Features
+## * Safety Features
 
 - **Dry-run by Default**: Always shows what would be changed before applying
 - **Path Validation**: Verifies directories exist before proceeding
@@ -128,7 +128,7 @@ Press [ENTER] to quit ...
 - **Real-time Feedback**: Shows progress with animated spinner
 - **Error Messages**: Clear, color-coded error messages for troubleshooting
 
-## 🎯 Use Cases
+## * Use Cases
 
 - **Backup Creation**: Mirror important directories to backup locations
 - **Server Synchronization**: Keep directories synchronized between servers
@@ -143,7 +143,7 @@ Press [ENTER] to quit ...
 - **Permissions**: Ensure you have read access to source and write access to destination
 - **Network Locations**: Works with network-mounted directories (NFS, SMB, etc.)
 
-## 🐛 Troubleshooting
+## * Troubleshooting
 
 ### Common Issues
 
@@ -165,7 +165,7 @@ Press [ENTER] to quit ...
 
 For detailed rsync output, you can modify the script to remove `> /dev/null 2>&1` from the rsync command line.
 
-## 🤝 Contributing
+## * Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
@@ -176,7 +176,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 - Test thoroughly before submitting
 - Update documentation as needed
 
-## 📄 License
+## * License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
@@ -186,7 +186,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Inspired by the need for simple, safe directory synchronization
 - Thanks to the open-source community for continuous improvements
 
-## 📞 Support
+## * Support
 
 If you encounter any issues or have questions:
 
@@ -196,4 +196,4 @@ If you encounter any issues or have questions:
 
 ---
 
-**⭐ If this script helped you, please consider giving it a star!**
+*** If this script helped you, please consider giving it a star!**
