@@ -1,7 +1,11 @@
 #!/bin/bash
+#
+# SCRIPT: Synchronization with Progress Bar and Spinner
+# Description: Synchronizes a source directory to a destination
+# with real progress bar (without backup system)
+#
 
 clear
-
 # Set UTF-8 encoding to handle accented characters
 export LC_ALL=C.UTF-8
 
@@ -9,8 +13,6 @@ export LC_ALL=C.UTF-8
 if ! command -v rsync &> /dev/null; then
     echo
     echo -e "\e[38;5;1mThis program requires rsync. Please install it with: sudo apt install rsync\e[0m"
-    echo
-    echo "Synchronization completed."
     echo
     echo -n "Press [ENTER] to quit ... "
     read var_name
@@ -27,175 +29,132 @@ if ! command -v realpath &> /dev/null; then
     exit 1
 fi
 
-# Function to display error message in red
+# Function to display an error message in red
 error_message() {
     echo -e "\e[38;5;1m$1\e[0m"
 }
 
-# Background animation function
-animation_spinner() {
-    local signal_file="$1"
-    i=0
-    sp="/-\|"
-    while [ ! -f "$signal_file" ]; do
-        printf "\b${sp:i++%${#sp}:1}"
-        sleep 0.1
-    done
-    printf "\b"
-}
-
-echo "Rsyncmenu 1.0"
+# --- START OF SCRIPT ---
+echo "Directory synchronization with rsync 1.2 (Dynamic progress with stdbuf)"
 echo
 
-# Ask for source directory
-while true; do
-    echo -n "Enter the source directory path: "
-    read -r SOURCE
+# Input directories
+echo "Enter the absolute path of the source directory:"
+read -r SOURCE_DIR
+SOURCE_DIR_REAL=$(realpath "$SOURCE_DIR" 2>/dev/null)
 
-    if [[ -z "$SOURCE" ]]; then
-        error_message "Error: Source path cannot be empty."
-        continue
-    fi
+if [ ! -d "$SOURCE_DIR_REAL" ]; then
+    error_message "Error: Invalid source directory."
+    exit 1
+fi
 
-    # Resolve real path
-    SOURCE_REAL=$(realpath "$SOURCE" 2>/dev/null)
+echo "Enter the absolute path of the destination directory:"
+read -r DEST_DIR
+DEST_DIR_REAL=$(realpath "$DEST_DIR" 2>/dev/null)
 
-    if [ ! -d "$SOURCE_REAL" ]; then
-        error_message "Error: Source directory '$SOURCE' does not exist or is not accessible!"
-        continue
-    fi
+if [ ! -d "$DEST_DIR_REAL" ]; then
+    error_message "Error: Invalid destination directory."
+    exit 1
+fi
 
-    echo "Source directory validated: $SOURCE_REAL"
-    break
+if [ "$SOURCE_DIR_REAL" == "$DEST_DIR_REAL" ]; then
+    error_message "Error: Source and destination are identical."
+    exit 1
+fi
+
+# --- ANALYSIS PHASE (Dry-run to count files) ---
+DRYRUN_FILE="/tmp/dr$$"
+ANALYSIS_FLAG="/tmp/af$$"
+rm -f "$ANALYSIS_FLAG"
+
+(
+    rsync -a --delete -n -i --exclude=.Trash-1000 "$SOURCE_DIR_REAL/" "$DEST_DIR_REAL/" > "$DRYRUN_FILE" 2>&1
+    touch "$ANALYSIS_FLAG"
+) &
+ANALYSIS_PID=$!
+
+i=1
+sp="/-\|"
+printf "\e[?25lAnalyzing differences...  "
+while [ ! -f "$ANALYSIS_FLAG" ]; do
+    printf "\b${sp:i++%${#sp}:1}"
+    sleep 0.1
 done
+printf "\e[?25h\b \n"
+wait $ANALYSIS_PID
 
-echo
-
-# Ask for destination directory
-while true; do
-    echo -n "Enter the destination directory path: "
-    read -r DEST
-
-    if [[ -z "$DEST" ]]; then
-        error_message "Error: Destination path cannot be empty."
-        continue
-    fi
-
-    # Resolve real path
-    DEST_REAL=$(realpath "$DEST" 2>/dev/null)
-
-    if [ ! -d "$DEST_REAL" ]; then
-        error_message "Error: Destination directory '$DEST' does not exist or is not accessible!"
-        continue
-    fi
-
-    # Check if source and destination are identical
-    if [ "$SOURCE_REAL" == "$DEST_REAL" ]; then
-        error_message "Error: Source and destination directories are identical!"
-        continue
-    fi
-
-    echo "Destination directory validated: $DEST_REAL"
-    break
-done
-
-echo
-echo -n "Analyzing differences between directories... "
-
-# Signal file for analysis
-ANALYSIS_SIGNAL_FILE="/tmp/rsync_analysis_$"
-
-# Start background animation for analysis
-animation_spinner "$ANALYSIS_SIGNAL_FILE" &
-ANALYSIS_SPINNER_PID=$!
-
-# Analyze changes with a dry-run
-TMP_DRYRUN=$(mktemp)
-rsync -a --delete -n -i --exclude='.Trash-1000' "$SOURCE_REAL/" "$DEST_REAL/" > "$TMP_DRYRUN" 2>&1
-
-# Count operations
-total_operations=0
-while IFS= read -r line; do
-    if [[ "$line" =~ ^[\>c\*].* ]] || [[ "$line" =~ deleting ]]; then
-        total_operations=$((total_operations + 1))
-    fi
-done < "$TMP_DRYRUN"
-
-rm -f "$TMP_DRYRUN"
-
-# Stop analysis animation
-touch "$ANALYSIS_SIGNAL_FILE"
-wait $ANALYSIS_SPINNER_PID 2>/dev/null
-rm -f "$ANALYSIS_SIGNAL_FILE"
-
-echo "Total operations detected: $total_operations"
+# Precise counting of operations (same regex as the progress loop)
+total_operations=$(grep -E '^[[:space:]]*deleting|^[><fcLh*]' "$DRYRUN_FILE" 2>/dev/null | wc -l | awk '{print $1+0}')
+rm -f "$DRYRUN_FILE" "$ANALYSIS_FLAG"
 
 if [ "$total_operations" -eq 0 ]; then
-    clear
-    echo "No synchronization needed - directories are already synchronized."
-    echo
+    echo "No synchronization needed."
     echo -n "Press [ENTER] to quit ... "
     read var_name
     exit 0
 fi
 
-# Ask for confirmation before switching to production mode
-clear
-echo "Analysis completed: $total_operations operation(s) to perform"
-echo "Source      : $SOURCE_REAL"
-echo "Destination : $DEST_REAL"
-echo
-echo -n "Do you want to switch to production mode (without dry-run)? (y/N) "
+# --- CONFIRMATION ---
+echo "Analysis complete: $total_operations operations detected."
+echo -n "Switch to production mode? (y/N) "
 read -r confirm
+
 if ! [[ "$confirm" =~ ^[yY]$ ]]; then
-    echo "Dry-run mode activated: no modifications will be applied."
-    PRODUCTION_MODE=0
-else
-    echo "Production mode activated: modifications will be applied."
-    PRODUCTION_MODE=1
+    echo "Aborted or dry-run complete."
+    exit 0
 fi
 
-# Perform synchronization with spinning cursor
-echo
-echo -n "Synchronization in progress... "
+# --- SYNCHRONIZATION PHASE WITH PROGRESS BAR ---
+clear
+echo "Synchronization in progress..."
 
-# Signal file for synchronization
-SYNC_SIGNAL_FILE="/tmp/rsync_sync_$"
+# Build options
+RSYNC_OPTS="-a --delete -i --exclude=.Trash-1000"
 
-# Start background animation for synchronization
-animation_spinner "$SYNC_SIGNAL_FILE" &
-SYNC_SPINNER_PID=$!
+# Initialize progress bar variables
+current=0
+sp_idx=1
+bar_size=40
 
-# Perform synchronization
-if [ "$PRODUCTION_MODE" -eq 1 ]; then
-    RSYNC_OPTIONS="-a --delete --exclude='.Trash-1000'"
-else
-    RSYNC_OPTIONS="-a --delete -n --exclude='.Trash-1000'"
-fi
+# Hide cursor
+printf "\e[?25l"
 
-# Execute synchronization
-rsync $RSYNC_OPTIONS "$SOURCE_REAL/" "$DEST_REAL/" > /dev/null 2>&1
+# Launch rsync with stdbuf to force line buffering (real-time progress)
+# stdbuf -oL forces line-by-line output instead of buffering
+while IFS= read -r line; do
+    # Only process lines indicating a transfer or deletion
+    if [[ "$line" =~ ^[[:space:]]*deleting|^[\>\<fcLh\*] ]]; then
+        ((current++))
 
-# Stop synchronization animation
-touch "$SYNC_SIGNAL_FILE"
-wait $SYNC_SPINNER_PID 2>/dev/null
-rm -f "$SYNC_SIGNAL_FILE"
+        # Calculate percentage
+        percent=$(( current * 100 / total_operations ))
+        if [ $percent -gt 100 ]; then percent=100; fi
 
-echo "completed."
+        # Calculate bar
+        completed=$(( current * bar_size / total_operations ))
+        if [ $completed -gt $bar_size ]; then completed=$bar_size; fi
+        remaining=$(( bar_size - completed ))
 
-# Display results
+        # Build bar string
+        bar_str=$(printf "%${completed}s" | tr ' ' '#')
+        dot_str=$(printf "%${remaining}s" | tr ' ' '-')
+
+        # Spinner animation
+        char=${sp:sp_idx++%${#sp}:1}
+
+        # Display: \r returns to beginning, \e[K clears the line
+        printf "\r\e[K[%-${bar_size}s] %d%% %s (%d/%d)" "$bar_str$dot_str" "$percent" "$char" "$current" "$total_operations"
+    fi
+done < <(stdbuf -oL rsync $RSYNC_OPTS "$SOURCE_DIR_REAL/" "$DEST_DIR_REAL/")
+
+# Show cursor again
+printf "\e[?25h\n\n"
+
+# --- FINAL RESULTS ---
 echo "Synchronization results:"
 echo "-----------------------------"
-echo "- Source: $SOURCE_REAL"
-echo "- Destination: $DEST_REAL"
-if [ "$PRODUCTION_MODE" -eq 1 ]; then
-    echo "- Total operations completed: $total_operations"
-else
-    echo "- $total_operations operation(s) would have been performed"
-fi
-
+echo "- Total operations performed: $total_operations"
 echo
-echo "Synchronization completed."
-echo "Operation finished."
+echo "Operation complete."
 echo -n "Press [ENTER] to quit ... "
 read var_name
