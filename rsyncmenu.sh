@@ -1,201 +1,160 @@
 #!/bin/bash
+#
+# SCRIPT : Synchronisation avec Barre de Progression et Spinner
+# Description : Synchronise un répertoire source vers une destination
+# avec barre de progression réelle (sans système de backup)
+#
 
 clear
-
-# Set UTF-8 encoding to handle accented characters
+# Définir l'encodage UTF-8 pour gérer les caractères accentués
 export LC_ALL=C.UTF-8
 
-# Check if rsync is installed
+# Vérification si rsync est installé
 if ! command -v rsync &> /dev/null; then
     echo
-    echo -e "\e[38;5;1mThis program requires rsync. Please install it with: sudo apt install rsync\e[0m"
-    echo
-    echo "Synchronization completed."
+    echo -e "\e[38;5;1mCe programme nécessite rsync. Veuillez l'installer avec : sudo apt install rsync\e[0m"
     echo
     echo -n "Press [ENTER] to quit ... "
     read var_name
     exit 1
 fi
 
-# Check if realpath is installed
+# Vérification si realpath est installé
 if ! command -v realpath &> /dev/null; then
     echo
-    echo -e "\e[38;5;1mThis program requires realpath. Please install it with: sudo apt install coreutils\e[0m"
+    echo -e "\e[38;5;1mCe programme nécessite realpath. Veuillez l'installer avec : sudo apt install coreutils\e[0m"
     echo
     echo -n "Press [ENTER] to quit ... "
     read var_name
     exit 1
 fi
 
-# Function to display error message in red
+# Fonction pour afficher un message d'erreur en rouge
 error_message() {
     echo -e "\e[38;5;1m$1\e[0m"
 }
 
-# Background animation function
-animation_spinner() {
-    local signal_file="$1"
-    i=0
-    sp="/-\|"
-    while [ ! -f "$signal_file" ]; do
-        printf "\b${sp:i++%${#sp}:1}"
-        sleep 0.1
-    done
-    printf "\b"
-}
-
-echo "Rsyncmenu 1.0"
+# --- DEBUT DU SCRIPT ---
+echo "Synchronisation de répertoires avec rsync 1.2 (Progression dynamique avec stdbuf)"
 echo
 
-# Ask for source directory
-while true; do
-    echo -n "Enter the source directory path: "
-    read -r SOURCE
+# Saisie des répertoires
+echo "Entrez le chemin absolu du répertoire source :"
+read -r SOURCE_DIR
+SOURCE_DIR_REAL=$(realpath "$SOURCE_DIR" 2>/dev/null)
 
-    if [[ -z "$SOURCE" ]]; then
-        error_message "Error: Source path cannot be empty."
-        continue
-    fi
+if [ ! -d "$SOURCE_DIR_REAL" ]; then
+    error_message "Erreur : Répertoire source invalide."
+    exit 1
+fi
 
-    # Resolve real path
-    SOURCE_REAL=$(realpath "$SOURCE" 2>/dev/null)
+echo "Entrez le chemin absolu du répertoire destination :"
+read -r DEST_DIR
+DEST_DIR_REAL=$(realpath "$DEST_DIR" 2>/dev/null)
 
-    if [ ! -d "$SOURCE_REAL" ]; then
-        error_message "Error: Source directory '$SOURCE' does not exist or is not accessible!"
-        continue
-    fi
+if [ ! -d "$DEST_DIR_REAL" ]; then
+    error_message "Erreur : Répertoire destination invalide."
+    exit 1
+fi
 
-    echo "Source directory validated: $SOURCE_REAL"
-    break
+if [ "$SOURCE_DIR_REAL" == "$DEST_DIR_REAL" ]; then
+    error_message "Erreur : Source et destination identiques."
+    exit 1
+fi
+
+# --- PHASE D'ANALYSE (Dry-run pour compter les fichiers) ---
+DRYRUN_FILE="/tmp/dr$$"
+ANALYSIS_FLAG="/tmp/af$$"
+rm -f "$ANALYSIS_FLAG"
+
+(
+    rsync -a --delete -n -i --exclude=.Trash-1000 "$SOURCE_DIR_REAL/" "$DEST_DIR_REAL/" > "$DRYRUN_FILE" 2>&1
+    touch "$ANALYSIS_FLAG"
+) &
+ANALYSIS_PID=$!
+
+i=1
+sp="/-\|"
+printf "\e[?25lAnalyse des différences...  "
+while [ ! -f "$ANALYSIS_FLAG" ]; do
+    printf "\b${sp:i++%${#sp}:1}"
+    sleep 0.1
 done
+printf "\e[?25h\b \n"
+wait $ANALYSIS_PID
 
-echo
-
-# Ask for destination directory
-while true; do
-    echo -n "Enter the destination directory path: "
-    read -r DEST
-
-    if [[ -z "$DEST" ]]; then
-        error_message "Error: Destination path cannot be empty."
-        continue
-    fi
-
-    # Resolve real path
-    DEST_REAL=$(realpath "$DEST" 2>/dev/null)
-
-    if [ ! -d "$DEST_REAL" ]; then
-        error_message "Error: Destination directory '$DEST' does not exist or is not accessible!"
-        continue
-    fi
-
-    # Check if source and destination are identical
-    if [ "$SOURCE_REAL" == "$DEST_REAL" ]; then
-        error_message "Error: Source and destination directories are identical!"
-        continue
-    fi
-
-    echo "Destination directory validated: $DEST_REAL"
-    break
-done
-
-echo
-echo -n "Analyzing differences between directories... "
-
-# Signal file for analysis
-ANALYSIS_SIGNAL_FILE="/tmp/rsync_analysis_$"
-
-# Start background animation for analysis
-animation_spinner "$ANALYSIS_SIGNAL_FILE" &
-ANALYSIS_SPINNER_PID=$!
-
-# Analyze changes with a dry-run
-TMP_DRYRUN=$(mktemp)
-rsync -a --delete -n -i --exclude='.Trash-1000' "$SOURCE_REAL/" "$DEST_REAL/" > "$TMP_DRYRUN" 2>&1
-
-# Count operations
-total_operations=0
-while IFS= read -r line; do
-    if [[ "$line" =~ ^[\>c\*].* ]] || [[ "$line" =~ deleting ]]; then
-        total_operations=$((total_operations + 1))
-    fi
-done < "$TMP_DRYRUN"
-
-rm -f "$TMP_DRYRUN"
-
-# Stop analysis animation
-touch "$ANALYSIS_SIGNAL_FILE"
-wait $ANALYSIS_SPINNER_PID 2>/dev/null
-rm -f "$ANALYSIS_SIGNAL_FILE"
-
-echo "Total operations detected: $total_operations"
+# Comptage précis des opérations (même regex que la boucle de progression)
+total_operations=$(grep -E '^[[:space:]]*deleting|^[><fcLh*]' "$DRYRUN_FILE" 2>/dev/null | wc -l | awk '{print $1+0}')
+rm -f "$DRYRUN_FILE" "$ANALYSIS_FLAG"
 
 if [ "$total_operations" -eq 0 ]; then
-    clear
-    echo "No synchronization needed - directories are already synchronized."
-    echo
+    echo "Aucune synchronisation nécessaire."
     echo -n "Press [ENTER] to quit ... "
     read var_name
     exit 0
 fi
 
-# Ask for confirmation before switching to production mode
-clear
-echo "Analysis completed: $total_operations operation(s) to perform"
-echo "Source      : $SOURCE_REAL"
-echo "Destination : $DEST_REAL"
-echo
-echo -n "Do you want to switch to production mode (without dry-run)? (y/N) "
+# --- CONFIRMATION ---
+echo "Analyse terminée : $total_operations opérations détectées."
+echo -n "Passer en mode production ? (o/N) "
 read -r confirm
-if ! [[ "$confirm" =~ ^[yY]$ ]]; then
-    echo "Dry-run mode activated: no modifications will be applied."
-    PRODUCTION_MODE=0
-else
-    echo "Production mode activated: modifications will be applied."
-    PRODUCTION_MODE=1
+
+if ! [[ "$confirm" =~ ^[oO]$ ]]; then
+    echo "Abandon ou mode dry-run terminé."
+    exit 0
 fi
 
-# Perform synchronization with spinning cursor
-echo
-echo -n "Synchronization in progress... "
+# --- PHASE DE SYNCHRONISATION AVEC BARRE DE PROGRESSION ---
+clear
+echo "Synchronisation en cours..."
 
-# Signal file for synchronization
-SYNC_SIGNAL_FILE="/tmp/rsync_sync_$"
+# Construction des options
+RSYNC_OPTS="-a --delete -i --exclude=.Trash-1000"
 
-# Start background animation for synchronization
-animation_spinner "$SYNC_SIGNAL_FILE" &
-SYNC_SPINNER_PID=$!
+# Initialisation des variables de la barre
+current=0
+sp_idx=1
+bar_size=40
 
-# Perform synchronization
-if [ "$PRODUCTION_MODE" -eq 1 ]; then
-    RSYNC_OPTIONS="-a --delete --exclude='.Trash-1000'"
-else
-    RSYNC_OPTIONS="-a --delete -n --exclude='.Trash-1000'"
-fi
+# Cacher le curseur
+printf "\e[?25l"
 
-# Execute synchronization
-rsync $RSYNC_OPTIONS "$SOURCE_REAL/" "$DEST_REAL/" > /dev/null 2>&1
+# Lancer rsync avec stdbuf pour forcer le line buffering (progression en temps réel)
+# stdbuf -oL force la sortie ligne par ligne au lieu de bufferiser
+while IFS= read -r line; do
+    # On ne traite que les lignes indiquant un transfert ou une suppression
+    if [[ "$line" =~ ^[[:space:]]*deleting|^[\>\<fcLh\*] ]]; then
+        ((current++))
 
-# Stop synchronization animation
-touch "$SYNC_SIGNAL_FILE"
-wait $SYNC_SPINNER_PID 2>/dev/null
-rm -f "$SYNC_SIGNAL_FILE"
+        # Calcul du pourcentage
+        percent=$(( current * 100 / total_operations ))
+        if [ $percent -gt 100 ]; then percent=100; fi
 
-echo "completed."
+        # Calcul de la barre
+        completed=$(( current * bar_size / total_operations ))
+        if [ $completed -gt $bar_size ]; then completed=$bar_size; fi
+        remaining=$(( bar_size - completed ))
 
-# Display results
-echo "Synchronization results:"
+        # Construction de la chaîne de la barre
+        bar_str=$(printf "%${completed}s" | tr ' ' '#')
+        dot_str=$(printf "%${remaining}s" | tr ' ' '-')
+
+        # Animation du spinner
+        char=${sp:sp_idx++%${#sp}:1}
+
+        # Affichage : \r revient au début, \e[K efface la ligne
+        printf "\r\e[K[%-${bar_size}s] %d%% %s (%d/%d)" "$bar_str$dot_str" "$percent" "$char" "$current" "$total_operations"
+    fi
+done < <(stdbuf -oL rsync $RSYNC_OPTS "$SOURCE_DIR_REAL/" "$DEST_DIR_REAL/")
+
+# Réafficher le curseur
+printf "\e[?25h\n\n"
+
+# --- RÉSULTATS FINAUX ---
+echo "Résultats de la synchronisation :"
 echo "-----------------------------"
-echo "- Source: $SOURCE_REAL"
-echo "- Destination: $DEST_REAL"
-if [ "$PRODUCTION_MODE" -eq 1 ]; then
-    echo "- Total operations completed: $total_operations"
-else
-    echo "- $total_operations operation(s) would have been performed"
-fi
-
+echo "- Total d'opérations effectuées : $total_operations"
 echo
-echo "Synchronization completed."
-echo "Operation finished."
+echo "Opération terminée."
 echo -n "Press [ENTER] to quit ... "
 read var_name
