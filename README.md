@@ -66,7 +66,7 @@ sudo apt install rsync coreutils ncurses-bin
 ## Installation
 
 ```bash
-git clone https://github.com/<your-user>/turbo_rsync_backup.git
+git clone https://github.com/H4k3rNap/turbo_rsync_backup.git
 cd turbo_rsync_backup
 chmod +x turbo_rsync_backup.sh
 ```
