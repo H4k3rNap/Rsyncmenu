@@ -2,7 +2,7 @@
 
 A beautiful Bash script that wraps `rsync` with a **Microsoft Defrag-style** live progress UI.
 
-![Interface example]
+[Interface example]
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
