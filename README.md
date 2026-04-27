@@ -1,9 +1,8 @@
-# turbo_rsync_backup
+# Rsyncmenu - Turbo Rsync Backup
 
-A Bash script that wraps `rsync` with a Microsoft Defrag–style progress UI:
-a colored block grid that fills up as the sync progresses, "Status" and
-"Legend" panels at the bottom, and a red status bar showing the current
-operation (`Creating...`, `Writing...`, `Deleting...`, `Backing up...`).
+A beautiful Bash script that wraps `rsync` with a **Microsoft Defrag-style** live progress UI.
+
+![Interface example]
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -321,10 +320,6 @@ that.
 - Ubuntu 22.04+
 - Terminals: `lxterminal`, `gnome-terminal`, `konsole`, `xterm`,
   `tilix`, `kitty`, `alacritty`
-
-## License
-
-MIT — see `LICENSE` (add one when publishing on GitHub).
 
 ## Contributing
 
